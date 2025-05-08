@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { saveLocalUser } from '@/lib/asyncStorage';
 import { useNavigate } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 const LoginScreen = () => {
   const [loading, setLoading] = useState(false);
@@ -13,10 +15,18 @@ const LoginScreen = () => {
 
   useEffect(() => {
     const checkUser = async () => {
-      const user = await getCurrentUser();
-      if (user) {
-        await saveLocalUser(user);
-        navigate('/intro');
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+          await saveLocalUser(user);
+          navigate('/intro');
+          toast({
+            title: "Welcome back!",
+            description: `Signed in as ${user.email || 'user'}`,
+          });
+        }
+      } catch (err) {
+        console.error("Error checking user:", err);
       }
     };
 
@@ -31,10 +41,20 @@ const LoginScreen = () => {
       
       if (error) {
         setError(error.message);
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive"
+        });
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
       console.error(err);
+      toast({
+        title: "Login error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -44,8 +64,8 @@ const LoginScreen = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md bg-card border-border">
         <CardHeader>
-          <CardTitle className="game-heading">Korean Gangster: Pure Iron</CardTitle>
-          <CardDescription className="text-muted-foreground">
+          <CardTitle className="game-heading text-center">Korean Gangster: Pure Iron</CardTitle>
+          <CardDescription className="text-muted-foreground text-center">
             Sign in to begin your journey from mechanic to mob boss
           </CardDescription>
         </CardHeader>
@@ -64,9 +84,16 @@ const LoginScreen = () => {
           <Button 
             onClick={handleGoogleLogin} 
             disabled={loading}
-            className="w-full game-btn"
+            className="w-full game-btn flex items-center justify-center gap-2"
           >
-            {loading ? 'Signing in...' : 'Sign in with Google'}
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Signing in...</span>
+              </>
+            ) : (
+              <span>Sign in with Google</span>
+            )}
           </Button>
         </CardFooter>
       </Card>

@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LoginScreen from "./components/auth/LoginScreen";
 import GameIntro from "./components/game/GameIntro";
 import HomeScreen from "./components/game/HomeScreen";
@@ -12,6 +12,7 @@ import MembersScreen from "./components/game/MembersScreen";
 import TalentTreeScreen from "./components/game/TalentTreeScreen";
 import GameLayout from "./layouts/GameLayout";
 import NotFound from "./pages/NotFound";
+import Index from "./pages/Index";
 
 const queryClient = new QueryClient();
 
@@ -33,8 +34,8 @@ const App = () => (
             <Route path="/talents" element={<TalentTreeScreen />} />
           </Route>
           
-          {/* Redirect root to login */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          {/* Root route */}
+          <Route path="/" element={<Index />} />
           
           {/* 404 route */}
           <Route path="*" element={<NotFound />} />

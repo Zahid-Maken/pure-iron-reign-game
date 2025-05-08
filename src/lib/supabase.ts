@@ -1,11 +1,11 @@
 
 import { createClient } from '@supabase/supabase-js';
+import { supabase as supabaseClient } from '@/integrations/supabase/client';
 
-// Public anon key is safe to be in code
-const supabaseUrl = 'https://YOUR_SUPABASE_URL.supabase.co';
-const supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+// Import the supabase client like this:
+// import { supabase } from "@/lib/supabase";
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = supabaseClient;
 
 export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -30,70 +30,142 @@ export async function getCurrentUser() {
 
 // Save user progress
 export async function saveUserProgress(userId: string, progress: any) {
-  const { data, error } = await supabase
-    .from('user_progress')
-    .upsert({ user_id: userId, ...progress }, { onConflict: 'user_id' })
-    .select();
+  // First try to save to Supabase if online
+  try {
+    const { data, error } = await supabase
+      .from('user_progress')
+      .upsert({ user_id: userId, ...progress }, { onConflict: 'user_id' })
+      .select();
+    
+    if (!error) {
+      console.log('Progress saved to Supabase');
+    }
+  } catch (e) {
+    console.log('Could not save to Supabase, saving locally only');
+  }
   
-  return { data, error };
+  // Always save locally as backup
+  await import('@/lib/asyncStorage').then(({ saveLocalUserProgress }) => {
+    saveLocalUserProgress(userId, progress);
+  });
 }
 
-// Get user progress
+// Get user progress (tries Supabase first, falls back to local)
 export async function getUserProgress(userId: string) {
-  const { data, error } = await supabase
-    .from('user_progress')
-    .select('*')
-    .eq('user_id', userId)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('user_progress')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    
+    if (data && !error) {
+      return { data, error };
+    }
+  } catch (e) {
+    console.log('Could not fetch from Supabase, using local data');
+  }
   
-  return { data, error };
+  // Fallback to local storage
+  const localData = await import('@/lib/asyncStorage').then(({ getLocalUserProgress }) => {
+    return getLocalUserProgress(userId);
+  });
+  
+  return { data: localData, error: null };
 }
 
-// Save gang members
+// Similar pattern for other data functions
 export async function saveGangMembers(userId: string, members: any[]) {
-  // First delete existing members
-  await supabase
-    .from('gang_members')
-    .delete()
-    .eq('user_id', userId);
+  try {
+    // Try Supabase first
+    await supabase
+      .from('gang_members')
+      .delete()
+      .eq('user_id', userId);
+    
+    const membersWithUserId = members.map(member => ({ ...member, user_id: userId }));
+    const { data, error } = await supabase
+      .from('gang_members')
+      .insert(membersWithUserId)
+      .select();
+    
+    if (!error) {
+      console.log('Gang members saved to Supabase');
+    }
+  } catch (e) {
+    console.log('Could not save to Supabase, saving locally only');
+  }
   
-  // Then insert new members
-  const membersWithUserId = members.map(member => ({ ...member, user_id: userId }));
-  const { data, error } = await supabase
-    .from('gang_members')
-    .insert(membersWithUserId)
-    .select();
-  
-  return { data, error };
+  // Always save locally as backup
+  await import('@/lib/asyncStorage').then(({ saveLocalGangMembers }) => {
+    saveLocalGangMembers(userId, members);
+  });
 }
 
-// Get gang members
 export async function getGangMembers(userId: string) {
-  const { data, error } = await supabase
-    .from('gang_members')
-    .select('*')
-    .eq('user_id', userId);
+  try {
+    const { data, error } = await supabase
+      .from('gang_members')
+      .select('*')
+      .eq('user_id', userId);
+    
+    if (data && !error) {
+      return { data, error };
+    }
+  } catch (e) {
+    console.log('Could not fetch from Supabase, using local data');
+  }
   
-  return { data, error };
+  // Fallback to local storage
+  const localData = await import('@/lib/asyncStorage').then(({ getLocalGangMembers }) => {
+    return getLocalGangMembers(userId);
+  });
+  
+  return { data: localData, error: null };
 }
 
-// Save mission history
 export async function saveMissionHistory(userId: string, mission: any) {
-  const { data, error } = await supabase
-    .from('mission_history')
-    .insert({ ...mission, user_id: userId })
-    .select();
+  try {
+    const { data, error } = await supabase
+      .from('mission_history')
+      .insert({ ...mission, user_id: userId })
+      .select();
+    
+    if (!error) {
+      console.log('Mission history saved to Supabase');
+    }
+  } catch (e) {
+    console.log('Could not save to Supabase, saving locally only');
+  }
   
-  return { data, error };
+  // Always save locally
+  await import('@/lib/asyncStorage').then(({ getLocalMissionHistory, saveLocalMissionHistory }) => {
+    getLocalMissionHistory(userId).then(existingMissions => {
+      const updatedMissions = [...(existingMissions || []), mission];
+      saveLocalMissionHistory(userId, updatedMissions);
+    });
+  });
 }
 
-// Get mission history
 export async function getMissionHistory(userId: string) {
-  const { data, error } = await supabase
-    .from('mission_history')
-    .select('*')
-    .eq('user_id', userId)
-    .order('completed_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('mission_history')
+      .select('*')
+      .eq('user_id', userId)
+      .order('completed_at', { ascending: false });
+    
+    if (data && !error) {
+      return { data, error };
+    }
+  } catch (e) {
+    console.log('Could not fetch from Supabase, using local data');
+  }
   
-  return { data, error };
+  // Fallback to local storage
+  const localData = await import('@/lib/asyncStorage').then(({ getLocalMissionHistory }) => {
+    return getLocalMissionHistory(userId);
+  });
+  
+  return { data: localData || [], error: null };
 }

@@ -6,6 +6,8 @@ import { signOut } from '@/lib/supabase';
 import { clearLocalUser, getLocalUser } from '@/lib/asyncStorage';
 import { useNavigate } from 'react-router-dom';
 import { getStamina, getMaxStamina, getTimeUntilNextStamina } from '@/utils/stamina';
+import { toast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 const HomeScreen = () => {
   const navigate = useNavigate();
@@ -19,46 +21,78 @@ const HomeScreen = () => {
   });
   const [stamina, setStamina] = useState(0);
   const [nextStaminaIn, setNextStaminaIn] = useState(0);
+  const [loading, setLoading] = useState(true);
   const maxStamina = getMaxStamina();
 
   useEffect(() => {
     const loadUser = async () => {
-      const userData = await getLocalUser();
-      if (!userData) {
-        navigate('/login');
-        return;
-      }
-      setUser(userData);
-      
-      // Load player stamina
-      const currentStamina = await getStamina(userData.id);
-      setStamina(currentStamina);
-      
-      // Start timer for stamina regeneration
-      const interval = setInterval(async () => {
-        const timeLeft = await getTimeUntilNextStamina(userData.id);
-        setNextStaminaIn(Math.ceil(timeLeft));
+      try {
+        setLoading(true);
+        const userData = await getLocalUser();
+        if (!userData) {
+          navigate('/login');
+          return;
+        }
+        setUser(userData);
         
-        const updatedStamina = await getStamina(userData.id);
-        setStamina(updatedStamina);
-      }, 10000); // Update every 10 seconds
-      
-      return () => clearInterval(interval);
+        // Load player stamina
+        const currentStamina = await getStamina(userData.id);
+        setStamina(currentStamina);
+        
+        // Start timer for stamina regeneration
+        const interval = setInterval(async () => {
+          const timeLeft = await getTimeUntilNextStamina(userData.id);
+          setNextStaminaIn(Math.ceil(timeLeft));
+          
+          const updatedStamina = await getStamina(userData.id);
+          setStamina(updatedStamina);
+        }, 10000); // Update every 10 seconds
+        
+        setLoading(false);
+        return () => clearInterval(interval);
+      } catch (error) {
+        console.error("Error loading user data:", error);
+        setLoading(false);
+      }
     };
     
     loadUser();
   }, [navigate]);
 
   const handleLogout = async () => {
-    await signOut();
-    await clearLocalUser();
-    navigate('/login');
+    try {
+      await signOut();
+      await clearLocalUser();
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out"
+      });
+      navigate('/login');
+    } catch (error) {
+      console.error("Error logging out:", error);
+      toast({
+        title: "Logout failed",
+        description: "An error occurred during logout",
+        variant: "destructive"
+      });
+    }
   };
 
   const formatTime = (minutes: number) => {
     if (minutes < 1) return 'Less than a minute';
     return `${minutes} minute${minutes > 1 ? 's' : ''}`;
   };
+
+  if (loading) {
+    return (
+      <div className="game-container flex items-center justify-center min-h-[80vh]">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-lg text-muted-foreground">Loading game data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="game-container">
