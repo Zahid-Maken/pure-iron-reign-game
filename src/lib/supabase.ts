@@ -39,15 +39,25 @@ export async function saveUserProgress(userId: string, progress: any) {
     
     if (!error) {
       console.log('Progress saved to Supabase');
+      return { data, error: null };
+    } else {
+      console.error('Error saving to Supabase:', error);
+      // Fallback to local storage
+      await import('@/lib/asyncStorage').then(({ saveLocalUserProgress }) => {
+        saveLocalUserProgress(userId, progress);
+      });
+      return { data: null, error };
     }
   } catch (e) {
     console.log('Could not save to Supabase, saving locally only');
+    
+    // Always save locally as backup
+    await import('@/lib/asyncStorage').then(({ saveLocalUserProgress }) => {
+      saveLocalUserProgress(userId, progress);
+    });
+    
+    return { data: null, error: e };
   }
-  
-  // Always save locally as backup
-  await import('@/lib/asyncStorage').then(({ saveLocalUserProgress }) => {
-    saveLocalUserProgress(userId, progress);
-  });
 }
 
 // Get user progress (tries Supabase first, falls back to local)
@@ -60,18 +70,26 @@ export async function getUserProgress(userId: string) {
       .single();
     
     if (data && !error) {
-      return { data, error };
+      return { data, error: null };
+    } else {
+      console.error('Error fetching from Supabase:', error);
+      // Fallback to local storage
+      const localData = await import('@/lib/asyncStorage').then(({ getLocalUserProgress }) => {
+        return getLocalUserProgress(userId);
+      });
+      
+      return { data: localData, error: null };
     }
   } catch (e) {
     console.log('Could not fetch from Supabase, using local data');
+    
+    // Fallback to local storage
+    const localData = await import('@/lib/asyncStorage').then(({ getLocalUserProgress }) => {
+      return getLocalUserProgress(userId);
+    });
+    
+    return { data: localData, error: e };
   }
-  
-  // Fallback to local storage
-  const localData = await import('@/lib/asyncStorage').then(({ getLocalUserProgress }) => {
-    return getLocalUserProgress(userId);
-  });
-  
-  return { data: localData, error: null };
 }
 
 // Similar pattern for other data functions
@@ -91,15 +109,25 @@ export async function saveGangMembers(userId: string, members: any[]) {
     
     if (!error) {
       console.log('Gang members saved to Supabase');
+      return { data, error: null };
+    } else {
+      console.error('Error saving to Supabase:', error);
+      // Fallback to local storage
+      await import('@/lib/asyncStorage').then(({ saveLocalGangMembers }) => {
+        saveLocalGangMembers(userId, members);
+      });
+      return { data: null, error };
     }
   } catch (e) {
     console.log('Could not save to Supabase, saving locally only');
+    
+    // Always save locally as backup
+    await import('@/lib/asyncStorage').then(({ saveLocalGangMembers }) => {
+      saveLocalGangMembers(userId, members);
+    });
+    
+    return { data: null, error: e };
   }
-  
-  // Always save locally as backup
-  await import('@/lib/asyncStorage').then(({ saveLocalGangMembers }) => {
-    saveLocalGangMembers(userId, members);
-  });
 }
 
 export async function getGangMembers(userId: string) {
@@ -110,18 +138,26 @@ export async function getGangMembers(userId: string) {
       .eq('user_id', userId);
     
     if (data && !error) {
-      return { data, error };
+      return { data, error: null };
+    } else {
+      console.error('Error fetching from Supabase:', error);
+      // Fallback to local storage
+      const localData = await import('@/lib/asyncStorage').then(({ getLocalGangMembers }) => {
+        return getLocalGangMembers(userId);
+      });
+      
+      return { data: localData, error: null };
     }
   } catch (e) {
     console.log('Could not fetch from Supabase, using local data');
+    
+    // Fallback to local storage
+    const localData = await import('@/lib/asyncStorage').then(({ getLocalGangMembers }) => {
+      return getLocalGangMembers(userId);
+    });
+    
+    return { data: localData, error: e };
   }
-  
-  // Fallback to local storage
-  const localData = await import('@/lib/asyncStorage').then(({ getLocalGangMembers }) => {
-    return getLocalGangMembers(userId);
-  });
-  
-  return { data: localData, error: null };
 }
 
 export async function saveMissionHistory(userId: string, mission: any) {
@@ -133,18 +169,31 @@ export async function saveMissionHistory(userId: string, mission: any) {
     
     if (!error) {
       console.log('Mission history saved to Supabase');
+      return { data, error: null };
+    } else {
+      console.error('Error saving to Supabase:', error);
+      // Fallback to local storage
+      await import('@/lib/asyncStorage').then(({ getLocalMissionHistory, saveLocalMissionHistory }) => {
+        getLocalMissionHistory(userId).then(existingMissions => {
+          const updatedMissions = [...(existingMissions || []), mission];
+          saveLocalMissionHistory(userId, updatedMissions);
+        });
+      });
+      return { data: null, error };
     }
   } catch (e) {
     console.log('Could not save to Supabase, saving locally only');
-  }
-  
-  // Always save locally
-  await import('@/lib/asyncStorage').then(({ getLocalMissionHistory, saveLocalMissionHistory }) => {
-    getLocalMissionHistory(userId).then(existingMissions => {
-      const updatedMissions = [...(existingMissions || []), mission];
-      saveLocalMissionHistory(userId, updatedMissions);
+    
+    // Always save locally
+    await import('@/lib/asyncStorage').then(({ getLocalMissionHistory, saveLocalMissionHistory }) => {
+      getLocalMissionHistory(userId).then(existingMissions => {
+        const updatedMissions = [...(existingMissions || []), mission];
+        saveLocalMissionHistory(userId, updatedMissions);
+      });
     });
-  });
+    
+    return { data: null, error: e };
+  }
 }
 
 export async function getMissionHistory(userId: string) {
@@ -156,16 +205,24 @@ export async function getMissionHistory(userId: string) {
       .order('completed_at', { ascending: false });
     
     if (data && !error) {
-      return { data, error };
+      return { data, error: null };
+    } else {
+      console.error('Error fetching from Supabase:', error);
+      // Fallback to local storage
+      const localData = await import('@/lib/asyncStorage').then(({ getLocalMissionHistory }) => {
+        return getLocalMissionHistory(userId);
+      });
+      
+      return { data: localData || [], error: null };
     }
   } catch (e) {
     console.log('Could not fetch from Supabase, using local data');
+    
+    // Fallback to local storage
+    const localData = await import('@/lib/asyncStorage').then(({ getLocalMissionHistory }) => {
+      return getLocalMissionHistory(userId);
+    });
+    
+    return { data: localData || [], error: e };
   }
-  
-  // Fallback to local storage
-  const localData = await import('@/lib/asyncStorage').then(({ getLocalMissionHistory }) => {
-    return getLocalMissionHistory(userId);
-  });
-  
-  return { data: localData || [], error: null };
 }

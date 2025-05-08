@@ -9,7 +9,105 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      gang_members: {
+        Row: {
+          background: string | null
+          cost: number
+          id: string
+          loyalty: number
+          name: string
+          skill: number
+          speciality: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          background?: string | null
+          cost: number
+          id?: string
+          loyalty: number
+          name: string
+          skill: number
+          speciality: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          background?: string | null
+          cost?: number
+          id?: string
+          loyalty?: number
+          name?: string
+          skill?: number
+          speciality?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mission_history: {
+        Row: {
+          completed_at: string | null
+          id: string
+          mission_id: string
+          mission_name: string
+          rewards_earned: Json | null
+          success: boolean
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          mission_id: string
+          mission_name: string
+          rewards_earned?: Json | null
+          success: boolean
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          mission_id?: string
+          mission_name?: string
+          rewards_earned?: Json | null
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_progress: {
+        Row: {
+          courage: number | null
+          experience: number | null
+          id: string
+          last_updated: string | null
+          level: number | null
+          money: number | null
+          reputation: number | null
+          user_id: string
+        }
+        Insert: {
+          courage?: number | null
+          experience?: number | null
+          id?: string
+          last_updated?: string | null
+          level?: number | null
+          money?: number | null
+          reputation?: number | null
+          user_id: string
+        }
+        Update: {
+          courage?: number | null
+          experience?: number | null
+          id?: string
+          last_updated?: string | null
+          level?: number | null
+          money?: number | null
+          reputation?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isLoggedIn } from '@/lib/asyncStorage';
 import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -11,7 +12,15 @@ const Index = () => {
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        // Check if user is already logged in
+        // Check Supabase session first
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          navigate('/home');
+          return;
+        }
+        
+        // Fall back to local check
         const loggedIn = await isLoggedIn();
         
         if (loggedIn) {
