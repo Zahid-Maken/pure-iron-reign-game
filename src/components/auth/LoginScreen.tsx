@@ -7,6 +7,7 @@ import { saveLocalUser } from '@/lib/asyncStorage';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const LoginScreen = () => {
   const [loading, setLoading] = useState(false);
@@ -16,14 +17,22 @@ const LoginScreen = () => {
   useEffect(() => {
     const checkUser = async () => {
       try {
+        // Check Supabase session first
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          await saveLocalUser(session.user);
+          console.log("Session found, redirecting to intro");
+          navigate('/intro');
+          return;
+        }
+        
+        // Fall back to checking local user
         const user = await getCurrentUser();
         if (user) {
           await saveLocalUser(user);
+          console.log("User found locally, redirecting to intro");
           navigate('/intro');
-          toast({
-            title: "Welcome back!",
-            description: `Signed in as ${user.email || 'user'}`,
-          });
         }
       } catch (err) {
         console.error("Error checking user:", err);
@@ -31,6 +40,27 @@ const LoginScreen = () => {
     };
 
     checkUser();
+    
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("Auth state changed:", event);
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+          await saveLocalUser(session.user);
+          toast({
+            title: "Login successful",
+            description: `Welcome, ${session.user.email || 'user'}!`,
+          });
+          console.log("User signed in, redirecting to intro");
+          navigate('/intro');
+        }
+      }
+    );
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const handleGoogleLogin = async () => {
@@ -46,10 +76,13 @@ const LoginScreen = () => {
           description: error.message,
           variant: "destructive"
         });
+        console.error("Google login error:", error);
+      } else {
+        console.log("Google login initiated");
       }
-    } catch (err) {
+    } catch (err: any) {
       setError('An unexpected error occurred. Please try again.');
-      console.error(err);
+      console.error("Unexpected error during login:", err);
       toast({
         title: "Login error",
         description: "An unexpected error occurred. Please try again.",

@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { supabase as supabaseClient } from '@/integrations/supabase/client';
 
@@ -8,13 +7,15 @@ import { supabase as supabaseClient } from '@/integrations/supabase/client';
 export const supabase = supabaseClient;
 
 export async function signInWithGoogle() {
+  console.log("Initiating Google sign-in...");
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.origin,
+      redirectTo: `${window.location.origin}/intro`,
     }
   });
   
+  console.log("Google sign-in result:", { data, error });
   return { data, error };
 }
 

@@ -12,20 +12,35 @@ const Index = () => {
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        // Check Supabase session first
-        const { data: { session } } = await supabase.auth.getSession();
+        // Check Supabase session first with timeout to avoid hanging
+        const sessionPromise = supabase.auth.getSession();
         
-        if (session?.user) {
-          navigate('/home');
-          return;
+        // Add a timeout to ensure we don't hang indefinitely
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Supabase session check timed out')), 5000);
+        });
+        
+        try {
+          const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+          
+          if (session?.user) {
+            console.log("Active session found, redirecting to home");
+            navigate('/home');
+            return;
+          }
+        } catch (error) {
+          console.warn("Could not check Supabase session:", error);
+          // Continue with local check
         }
         
         // Fall back to local check
         const loggedIn = await isLoggedIn();
         
         if (loggedIn) {
+          console.log("User logged in locally, redirecting to home");
           navigate('/home');
         } else {
+          console.log("No authenticated user found, redirecting to login");
           navigate('/login');
         }
       } catch (error) {
